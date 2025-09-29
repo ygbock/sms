@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Attendance extends Model
 {
+    protected $table = 'attendance';
     protected $fillable = ['student_id','teacher_id','section_id','date','status'];
 
     public function student() { return $this->belongsTo(Student::class); }

@@ -31,4 +31,19 @@ return response()->json([
 'user' => $user->load('role'),
 ]);
 }
+
+public function refresh(Request $request)
+{
+	$user = $request->user();
+	if (!$user) {
+		return response()->json(['message' => 'Unauthenticated.'], 401);
+	}
+
+	// create a new token and revoke the current one
+	$current = $user->currentAccessToken();
+	$newToken = $user->createToken('api-token')->plainTextToken;
+	if ($current) $current->delete();
+
+	return response()->json(['token' => $newToken, 'user' => $user->load('role')]);
+}
 }

@@ -11,6 +11,7 @@ class SampleDataSeeder extends Seeder {
             ClassesSeeder::class,
             SectionsSeeder::class,
             StudentsSeeder::class,
+            AttendanceSeeder::class,
         ]);
     }
 }

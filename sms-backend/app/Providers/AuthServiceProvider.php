@@ -12,6 +12,7 @@ use App\Models\SchoolClass;
 use App\Policies\StudentPolicy;
 use App\Policies\SectionPolicy;
 use App\Policies\SchoolClassPolicy;
+use App\Policies\AttendancePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -27,5 +28,6 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(Student::class, StudentPolicy::class);
         Gate::policy(Section::class, SectionPolicy::class);
         Gate::policy(SchoolClass::class, SchoolClassPolicy::class);
+    Gate::policy(\App\Models\Attendance::class, AttendancePolicy::class);
     }
 }

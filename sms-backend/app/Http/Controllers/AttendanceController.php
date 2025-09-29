@@ -11,22 +11,82 @@ class AttendanceController extends Controller
 {
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'section_id' => 'required|exists:sections,id',
-            'date' => 'required|date',
-            'status' => 'required|in:present,absent,late,excused',
-        ]);
+        $this->authorize('create', Attendance::class);
 
-        $attendance = Attendance::create([
-            'student_id' => $data['student_id'],
-            'section_id' => $data['section_id'],
-            'teacher_id' => $request->user()->id,
-            'date' => $data['date'],
-            'status' => $data['status'],
-        ]);
+        // Support bulk submission: either a single record (student_id + status)
+        // or an array of records under `records`.
+        $payload = $request->all();
 
-        return response()->json($attendance, 201);
+        // Normalize input
+        if (isset($payload['records']) && is_array($payload['records'])) {
+            $records = $payload['records'];
+            $sectionId = $payload['section_id'] ?? null;
+            $date = $payload['date'] ?? null;
+        } else {
+            $records = [[
+                'student_id' => $payload['student_id'] ?? null,
+                'status' => $payload['status'] ?? null,
+                'section_id' => $payload['section_id'] ?? null,
+            ]];
+            $date = $payload['date'] ?? null;
+            $sectionId = $payload['section_id'] ?? null;
+        }
+
+        if (!$sectionId) {
+            return response()->json(['message' => 'section_id is required'], 422);
+        }
+        if (!$date) {
+            return response()->json(['message' => 'date is required'], 422);
+        }
+
+        // Ensure teacher is allowed to mark this section (teachers only for their sections)
+        $user = $request->user();
+        $role = optional($user->role)->name;
+        if ($role === 'Teacher') {
+            $section = Section::find($sectionId);
+            if (!$section || $section->teacher_id !== $user->id) {
+                return response()->json(['message' => 'Forbidden: not your section'], 403);
+            }
+        }
+
+        $created = [];
+        DB::beginTransaction();
+        try {
+            foreach ($records as $rec) {
+                $studentId = $rec['student_id'] ?? null;
+                $status = $rec['status'] ?? null;
+
+                if (!$studentId || !$status) continue;
+
+                $student = Student::find($studentId);
+                if (!$student) continue;
+
+                // Ensure student belongs to the section
+                if ($student->section_id != $sectionId) {
+                    // skip or fail — we choose to skip invalid student entries
+                    continue;
+                }
+
+                // Upsert attendance for the date/student to avoid duplicates
+                $att = Attendance::updateOrCreate(
+                    ['student_id' => $studentId, 'date' => $date],
+                    [
+                        'section_id' => $sectionId,
+                        'teacher_id' => $user->id,
+                        'status' => $status,
+                    ]
+                );
+                $created[] = $att;
+            }
+            DB::commit();
+        } catch (
+            Exception $e
+        ) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error saving attendance', 'error' => $e->getMessage()], 500);
+        }
+
+        return response()->json($created, 201);
     }
 
     public function index(Request $request, $sectionId)
@@ -39,6 +99,7 @@ class AttendanceController extends Controller
     // admin report
     public function attendanceReport(Request $request)
     {
+        $this->authorize('viewReport', Attendance::class);
         $params = $request->validate([
             'section_id' => 'required|exists:sections,id',
             'from' => 'required|date',
@@ -56,6 +117,7 @@ class AttendanceController extends Controller
 
     public function attendanceSectionAverages(Request $request)
     {
+        $this->authorize('viewReport', Attendance::class);
         $params = $request->validate(['from' => 'required|date', 'to' => 'required|date']);
         $from = $params['from'];
         $to = $params['to'];
@@ -72,6 +134,7 @@ class AttendanceController extends Controller
 
     public function attendanceTrends(Request $request)
     {
+        $this->authorize('viewReport', Attendance::class);
         $params = $request->validate(['section_id' => 'required|exists:sections,id', 'from' => 'required|date', 'to' => 'required|date']);
         $section = $params['section_id'];
         $from = $params['from'];
@@ -91,6 +154,7 @@ class AttendanceController extends Controller
     // student view: my attendance
     public function myAttendance(Request $request)
     {
+        $this->authorize('viewOwn', Attendance::class);
         // find student by user
         $student = Student::where('user_id', $request->user()->id)->first();
         if (!$student) return response()->json([], 200);
@@ -102,7 +166,16 @@ class AttendanceController extends Controller
     // parent view: children attendance (simple placeholder)
     public function parentChildrenAttendance(Request $request)
     {
-        // This assumes a guardian-child relation not yet implemented; return empty
-        return response()->json([]);
+        // Simple implementation: find students where the guardian user_id matches
+        $user = $request->user();
+        // This project doesn't have a guardians table; as a placeholder, if the user
+        // has role 'Guardian' we will return all students and their attendance.
+        $role = optional($user->role)->name;
+        if ($role !== 'Parent' && $role !== 'Guardian') {
+            return response()->json([], 200);
+        }
+
+        $students = Student::with(['user', 'attendance'])->get();
+        return response()->json($students);
     }
 }
