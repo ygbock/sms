@@ -12,6 +12,7 @@ class SampleDataSeeder extends Seeder {
             SectionsSeeder::class,
             StudentsSeeder::class,
             AttendanceSeeder::class,
+            GuardianSeeder::class,
         ]);
     }
 }

@@ -20,7 +20,7 @@
 3. **Core Modules (Backend)**
 
    * Student Information System (SIS).
-   * Attendance (basic CRUD).
+  * Attendance (basic CRUD).  <!-- DONE: backend endpoints, policy, seeder, and sample data added (2025-09-29) -->
    * Gradebook (simple assessments).
    * Fee Management (invoices, receipts).
 

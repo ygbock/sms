@@ -166,16 +166,14 @@ class AttendanceController extends Controller
     // parent view: children attendance (simple placeholder)
     public function parentChildrenAttendance(Request $request)
     {
-        // Simple implementation: find students where the guardian user_id matches
         $user = $request->user();
-        // This project doesn't have a guardians table; as a placeholder, if the user
-        // has role 'Guardian' we will return all students and their attendance.
         $role = optional($user->role)->name;
         if ($role !== 'Parent' && $role !== 'Guardian') {
             return response()->json([], 200);
         }
 
-        $students = Student::with(['user', 'attendance'])->get();
+        // return only students this guardian is linked to
+        $students = $user->children()->with(['user', 'attendance'])->get();
         return response()->json($students);
     }
 }

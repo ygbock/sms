@@ -26,4 +26,10 @@ public function role()
 {
 return $this->belongsTo(Role::class);
 }
+
+	// guardianship: users who are parents/guardians can have many students
+	public function children()
+	{
+		return $this->belongsToMany(Student::class, 'guardian_student', 'guardian_id', 'student_id');
+	}
 }
