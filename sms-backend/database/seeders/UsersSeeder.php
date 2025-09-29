@@ -1,3 +1,5 @@
+<?php
+
 namespace Database\Seeders;
 
 
@@ -7,14 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 
 class UsersSeeder extends Seeder {
-public function run(): void {
-DB::table('users')->insert([
-[
-'name' => 'Super Admin',
-'email' => 'admin@example.com',
-'password' => Hash::make('password'),
-'role_id' => 1,
-],
-]);
-}
+    public function run(): void {
+        if (!DB::table('users')->where('email', 'admin@example.com')->exists()) {
+            DB::table('users')->insert([
+                'name' => 'Super Admin',
+                'email' => 'admin@example.com',
+                'password' => Hash::make('password'),
+                'role_id' => 1,
+            ]);
+        }
+    }
 }

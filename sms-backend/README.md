@@ -59,3 +59,43 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+## Project setup (local)
+
+Quick steps to get the backend running for local development (uses SQLite by default):
+
+1. Install PHP (>=8.1) and Composer. Ensure PHP has sqlite/pdo enabled.
+2. From project root:
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+chmod 664 database/database.sqlite
+```
+
+3. Run migrations and seeders. Note: roles migration must run before users migration. An earlier roles migration file was added (`2022_01_01_000000_create_roles_table.php`) to ensure correct ordering. If you hit FK errors, you can explicitly run the roles migration first:
+
+```bash
+php artisan migrate --path=database/migrations/2022_01_01_000000_create_roles_table.php
+php artisan migrate
+php artisan db:seed
+```
+
+4. Start the dev server:
+
+```bash
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+5. Test the API:
+
+POST /api/auth/login { "email":"admin@example.com", "password":"password" }
+
+Use the returned token as a Bearer token for authenticated endpoints e.g. GET /api/users/me
+
+Notes:
+- `.env.example` defaults `SESSION_DRIVER` to `file` for local development to avoid requiring a sessions table.
+- New endpoints added: attendance CRUD and admin reporting used by the frontend (`/attendance`, `/sections/{id}/attendance`, `/admin/attendance-report`, `/admin/attendance-section-averages`, `/admin/attendance-trends`, `/me/attendance`).
